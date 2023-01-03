@@ -1,3 +1,5 @@
 TradePro/config
-TradePro/buffet_buys.txt
+TradePro/*.txt
 */.DS_Store
+*/*.csv
+*/*.txt

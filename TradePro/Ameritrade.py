@@ -5,7 +5,7 @@ import json
 import logging
 import time
 from pprint import pprint
-from TradePro.Utils import Utils
+from TradePro.Utils import get_logger, write_to_file
 
 
 class Ameritrade:
@@ -17,7 +17,7 @@ class Ameritrade:
         self.account_id = os.environ.get('TD_ACCOUNT_ID')
         self.redirect_uri = "https://localhost:5000"
         self.oauth_url = "https://api.tdameritrade.com/v1/oauth2/token"
-        self.logger = Utils().get_logger(self.__class__.__name__)
+        self.logger = get_logger(self.__class__.__name__)
 
         self.access_token = None
         self.refresh_token = None
@@ -56,18 +56,6 @@ class Ameritrade:
     @staticmethod
     def decode(s):
         return unquote(s)
-
-    @staticmethod
-    def write_to_file(content, filename, append=False):
-        write_command = 'w' if not append else 'a'
-
-        if isinstance(content, dict) or isinstance(content, tuple):
-            content = json.dumps(content)
-        if isinstance(content, bytes):
-            write_command = write_command + 'b'
-
-        with open(filename, write_command) as f:
-            f.write(content)
 
     def api_call(self, method, url, data=None, params=None, header=None, return_status_code=False):
         self.logger.info('api call: ' + url)
@@ -124,7 +112,7 @@ class Ameritrade:
     def update_access_token_in_file(self, token):
         old_token = self.get_token_from_file()
         old_token['access_token'] = token['access_token']
-        self.write_to_file(json.dumps(old_token), './config')
+        write_to_file(json.dumps(old_token), './config')
 
     def get_token_from_refresh_token(self, token):
         data = {
@@ -159,35 +147,24 @@ class Ameritrade:
         res = self.api_call(method='get', url=url, params=data, header=self.get_auth_header())
         return res[0]['cusip']
 
-    def get_symbol_fundamental_info(self, symbol):
+    def get_symbol_fundamental_info(self, symbols):
         url = 'https://api.tdameritrade.com/v1/instruments'
-        data = {'apikey': self.consumer_key,
-                'symbol': symbol,
-                'projection': 'fundamental'}
-        res = self.api_call(method='get', url=url, params=data, header=self.get_auth_header())
+        if not isinstance(symbols, list):
+            symbols = [symbols]
+        res = []
+        for symbol in symbols:
+            data = {'apikey': self.consumer_key,
+                    'symbol': symbol,
+                    'projection': 'fundamental'
+                    }
+            res.append(self.api_call(method='get', url=url, params=data, header=self.get_auth_header()))
         return res
 
     def get_watchlist_symbols(self):
         url = 'https://api.tdameritrade.com/v1/accounts/{}/watchlists'.format(self.account_id)
-        res = self.api_call(method='get', url=url, header=self.get_auth_header())
-        d = {wl['name']: [x['instrument']['symbol'] for x in wl['watchlistItems']] for wl in res}
-        return d
+        wls = self.api_call(method='get', url=url, header=self.get_auth_header())
+        return wls
 
-    @staticmethod
-    def dict_get(d, key):
-        return None if d is None else d[key] if key in d else None
-
-    def buffet_buy_score(self, symbol):
-        data = self.get_symbol_fundamental_info(symbol)
-
-        fd = self.dict_get(self.dict_get(data, symbol), 'fundamental')
-        pe = self.dict_get(fd, 'peRatio')
-        pb = self.dict_get(fd, 'pbRatio')
-        res = dict(is_buy=False, score=float('inf'), pe=pe, pb=pb)
-        if pe is not None and pb is not None and pe < 15.0 and pb < 1.5 and pe*pb!=0:
-            res['is_buy'] = True
-            res['score'] = pe*pb
-        return res
 
 
 
@@ -195,25 +172,13 @@ class Ameritrade:
 if __name__ == "__main__":
     c = Ameritrade()
     c.authorize()
-
-    symbol = 'CSPR'
-    # res = c.get_watchlist_symbols()
-    # print(res)
-    # print(c.get_symbol_fundamental_info(symbol))
+    c.get_watchlist_symbols()
+    # symbol = 'MU'
+    # # res = c.get_watchlist_symbols()
+    # # print(res)
+    # from pprint import pprint
+    #
+    # pprint(c.get_symbol_fundamental_info(symbol))
     # print(c.buffet_buy_score(symbol))
 
-    d = {}
-    sectors = c.get_watchlist_symbols()
-
-    filename = 'buffet_buys.txt'
-    os.remove(filename)
-
-    for sector, symbols in sectors.items():
-        d[sector] = []
-        for symbol in symbols:
-            score = c.buffet_buy_score(symbol)
-            if score['is_buy']:
-                d[sector].append(score)
-                c.write_to_file(json.dumps((sector,symbol, score))+"\n", filename, append=True)
-                print(symbol, score)
     # c.write_to_file(d, 'buffet_buys.txt', append=True)
