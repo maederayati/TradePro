@@ -27,7 +27,7 @@ class Symbol:
             a = Ameritrade()
             a.authorize()
 
-        wls = a.get_watchlist_symbols()
+        wls = a.get_watchlists()
         symbols = []
         for wl in wls:
             sector = wl['name']
