@@ -1,13 +1,12 @@
-
 import csv
 from TradePro.Ameritrade import Ameritrade
+
 
 class Symbol:
 
     def __init__(self, sector, ticker):
         self.ticker = ticker
         self.sector = sector
-
 
     @staticmethod
     def get_sp500():
@@ -38,4 +37,5 @@ class Symbol:
 
 if __name__ == "__main__":
     from pprint import pprint
+
     pprint([i.__dict__ for i in Symbol.get_watchlist()])

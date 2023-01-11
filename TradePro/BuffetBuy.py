@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os, json
 from TradePro.Ameritrade import Ameritrade
-from TradePro.Utils import dict_get, write_to_file
+from TradePro.Utils import dict_get, write_to_file, get_logger
 import csv
 from TradePro.Symbol import Symbol
 
@@ -26,7 +26,7 @@ class BuffetBuy:
     def __init__(self):
         self.a = Ameritrade()
         self.a.authorize()
-
+        self.logger = get_logger(self.__class__.__name__)
 
     def buffet_buy_score(self, symbol: Symbol):
         data = self.a.get_symbol_fundamental_info(symbol.ticker)[0]
@@ -40,23 +40,28 @@ class BuffetBuy:
                 score.is_buy = True
         return score
 
-    def create_buffet_buy_list(self, symbols: list[Symbol], filename ='sp500_buffet_buys.txt', watchlist_name = 'BuffetBuy' ):
+    def create_buffet_buy_list(self, symbols: list[Symbol], filename='sp500_buffet_buys.txt',
+                               watchlist_name='BuffetBuy'):
 
-        flag = True
+        first = True
         for i, symbol in enumerate(symbols):
             score = self.buffet_buy_score(symbol)
+            score_str = json.dumps((score.symbol.sector, score.symbol.ticker, score.score, score.pe, score.pb))
             if score.is_buy:
-                score_str = json.dumps((score.symbol.sector, score.symbol.ticker, score.score, score.pe, score.pb))
-                if flag:
-                    os.remove(filename)
-                    self.a.delete_watchlist(watchlist_name)
+                if first:
+                    try:
+                        self.a.delete_watchlist(watchlist_name)
+                    except Exception as e:
+                        self.logger.info(e)
+                    try:
+                        os.remove(filename)
+                    except FileNotFoundError as e:
+                        self.logger.info(e)
                     self.a.create_watchlist(watchlist_name, [score.symbol.ticker])
-                    flag = False
+                    first = False
                 else:
                     self.a.update_watchlist(watchlist_name, [score.symbol.ticker])
                 write_to_file(score_str + "\n", filename, append=True)
-
-
 
 
 if __name__ == "__main__":
@@ -64,11 +69,9 @@ if __name__ == "__main__":
 
     # s&p 500
     sp_symbols = Symbol.get_sp500()
-    bb.create_buffet_buy_list(sp_symbols, 'sp500_buffet_buys.txt', 'BB_SP500')
+    bb.create_buffet_buy_list(sp_symbols, 'sp500_buffet_buys.txt', 'BBSP500')
 
     # wl symbols
     # print(bb.buffet_buy_score(Symbol('tech', 'SMCI')))
     # wl_symbols = Symbol.get_watchlist()
     # bb.create_buffet_buy_list(wl_symbols, 'watchlists_buffet_buys.txt')
-
-

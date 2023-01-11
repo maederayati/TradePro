@@ -70,13 +70,13 @@ class Ameritrade:
 
         time.sleep(1)
         if return_status_code:
-            return {'content': json.loads(res.content) if res.content!=b'' else '', 'status_code': res.status_code}
+            return {'content': json.loads(res.content) if res.content != b'' else '', 'status_code': res.status_code}
 
         if res.status_code not in (200, 201, 204):
-            self.logger.info({'status_code': res.status_code,'error message': res.content})
+            self.logger.info({'status_code': res.status_code, 'error message': res.content})
             raise Exception('Api call failed.')
 
-        return json.loads(res.content if res.content!=b'' else '')
+        return json.loads(res.content if res.content != b'' else '')
 
     def get_access_code_url(self):
         return f"""
@@ -168,8 +168,7 @@ class Ameritrade:
         wls = self.api_call(method='get', url=url, header=self.get_auth_header())
         return wls
 
-
-    def create_watchlist(self, wl_name:str, tickers: list(str)):
+    def create_watchlist(self, wl_name: str, tickers: list(str)):
         url = 'https://api.tdameritrade.com/v1/accounts/{}/watchlists'.format(self.account_id)
         data = {
             'name': wl_name,
@@ -198,7 +197,7 @@ class Ameritrade:
     def delete_watchlist(self, wl_name: str):
 
         existing_wls = self.get_watchlists()
-        existing_wls_dict = {wl['name']:wl['watchlistId'] for wl in existing_wls}
+        existing_wls_dict = {wl['name']: wl['watchlistId'] for wl in existing_wls}
 
         if wl_name not in existing_wls_dict:
             raise Exception('Watchlist does not exist.')
@@ -211,11 +210,10 @@ class Ameritrade:
         else:
             raise Exception(f'Watchlist was not deleted. Error message: {res["content"]["error"]}')
 
-
     def update_watchlist(self, wl_name: str, tickers):
 
         existing_wls = self.get_watchlists()
-        existing_wls_dict = {wl['name']:wl['watchlistId'] for wl in existing_wls}
+        existing_wls_dict = {wl['name']: wl['watchlistId'] for wl in existing_wls}
         if wl_name not in existing_wls_dict:
             raise Exception('Watchlist does not exist.')
 
@@ -245,7 +243,6 @@ class Ameritrade:
             raise Exception(f'Watchlist was not updated. Error message: {res["content"]["error"]}')
 
 
-
 if __name__ == "__main__":
     c = Ameritrade()
 
@@ -256,8 +253,6 @@ if __name__ == "__main__":
     # print(res)
     # c.create_watchlist('BuffetBuy', ['INTC', 'CAJ'])
     # c.delete_watchlist('string')
-
-
 
     # symbol = 'MU'
     # # res = c.get_watchlist_symbols()
